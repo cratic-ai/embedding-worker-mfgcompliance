@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: embedding-worker
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+
+  - type: cron
+    name: poll-pending-docs
+    env: node
+    schedule: "*/5 * * * *"  # Every 5 minutes
+    buildCommand: npm install
+    startCommand: node cron-poll.js
