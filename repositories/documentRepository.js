@@ -33,7 +33,7 @@ exports.getPendingDocuments = async () => {
   const { data, error } = await supabase
     .from('documents')
     .select('*')
-    .eq('processing_status', 'queued')
+    .eq('processing_status',                        'pending')
     .order('uploaded_at', { ascending: true })
     .limit(10);
 
