@@ -22,13 +22,15 @@ exports.uploadDocument = async (req, res) => {
 
     const fileType = getFileExtension(mimetype).replace('.', '');
 
-    // Upload to Cloudinary
+    // ✅ Upload to Cloudinary with PUBLIC access
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'manufacturing-compliance',
           resource_type: 'auto',
-          public_id: `${Date.now()}-${originalname.replace(/\.[^/.]+$/, '')}`
+          public_id: `${Date.now()}-${originalname.replace(/\.[^/.]+$/, '')}`,
+          access_mode: 'public', // ✅ ADD THIS - makes file publicly accessible
+          type: 'upload' // ✅ ADD THIS - not 'authenticated'
         },
         (error, result) => {
           if (error) reject(error);
@@ -50,49 +52,12 @@ exports.uploadDocument = async (req, res) => {
       cloudinary_id: uploadResult.public_id,
       mime_type: mimetype,
       file_size: size,
-      processing_status:                         'pending' // Changed from 'pending'
+       processing_status: 'pending'
     });
 
     console.log('Document queued:', document.id);
 
-const triggerWorker = async (documentId, cloudinaryUrl, mimeType, fileType) => {
-  try {
-    if (!process.env.RENDER_WORKER_URL) {
-      console.warn('⚠️ RENDER_WORKER_URL not set. Worker trigger skipped.');
-      console.warn('⚠️ Document will be picked up by polling if configured.');
-      return;
-    }
-
-    console.log(`📤 Triggering worker for document ${documentId}`);
-
-    const response = await fetch(`${process.env.RENDER_WORKER_URL}/process-document`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.WORKER_SECRET}`
-      },
-      body: JSON.stringify({
-        documentId,
-        cloudinaryUrl,
-        mimeType,
-        fileType
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Worker responded with ${response.status}: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    console.log(`✅ Worker triggered successfully:`, result);
-
-  } catch (error) {
-    console.error('❌ Failed to trigger worker:', error.message);
-    console.error('⚠️ Document will remain in "queued" status until worker polls for it.');
-    // Don't throw - worker can pick it up via polling
-  }
-};
-    // Trigger Render worker (fire and forget)
+    // Trigger Render worker
     triggerWorker(document.id, uploadResult.secure_url, mimetype, fileType);
 
     res.status(201).json({
